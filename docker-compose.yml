@@ -1,13 +1,13 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18.1-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_USER: todo
       POSTGRES_PASSWORD: todo
       POSTGRES_DB: todos
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U todo -d todos"]
       interval: 5s
@@ -22,6 +22,7 @@ services:
     environment:
       PORT: "3000"
       DATABASE_URL: "postgres://todo:todo@db:5432/todos?sslmode=disable"
+      JWT_SECRET: "change-me-in-production"
     depends_on:
       db:
         condition: service_healthy

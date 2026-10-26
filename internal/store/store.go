@@ -39,9 +39,19 @@ func New(ctx context.Context, dsn string) (*Store, error) {
 func (s *Store) Close() { s.pool.Close() }
 
 func (s *Store) migrate(ctx context.Context) error {
-	_, err := s.pool.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS todos (
+	// pgx Exec не поддерживает несколько SQL-выражений в одном вызове,
+	// поэтому выполняем миграции по одному.
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id         BIGSERIAL PRIMARY KEY,
+			email      TEXT NOT NULL UNIQUE,
+			password   TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS todos (
 			id          BIGSERIAL PRIMARY KEY,
+			user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			title       TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
 			done        BOOLEAN NOT NULL DEFAULT FALSE,
@@ -49,19 +59,22 @@ func (s *Store) migrate(ctx context.Context) error {
 			due_at      TIMESTAMPTZ,
 			created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-
-		CREATE TABLE IF NOT EXISTS subtasks (
+		)`,
+		// Миграция для существующих БД: добавляем user_id, если колонки нет.
+		`ALTER TABLE todos ADD COLUMN IF NOT EXISTS user_id BIGINT REFERENCES users(id) ON DELETE CASCADE`,
+		`CREATE TABLE IF NOT EXISTS subtasks (
 			id      BIGSERIAL PRIMARY KEY,
 			todo_id BIGINT NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
 			title   TEXT NOT NULL,
 			done    BOOLEAN NOT NULL DEFAULT FALSE
-		);
-
-		CREATE INDEX IF NOT EXISTS idx_subtasks_todo_id ON subtasks(todo_id);
-	`)
-	if err != nil {
-		return fmt.Errorf("migrate: %w", err)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_subtasks_todo_id ON subtasks(todo_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.pool.Exec(ctx, stmt); err != nil {
+			return fmt.Errorf("migrate: %w", err)
+		}
 	}
 	return nil
 }
@@ -78,12 +91,13 @@ func scanTodo(r scanner) (models.Todo, error) {
 	return t, nil
 }
 
-// List возвращает задачи: невыполненные первыми, затем по приоритету и сроку.
-func (s *Store) List(ctx context.Context) ([]models.Todo, error) {
+// List возвращает задачи пользователя: невыполненные первыми, затем по приоритету и сроку.
+func (s *Store) List(ctx context.Context, userID int64) ([]models.Todo, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+todoColumns+`
 		FROM todos
-		ORDER BY done ASC, priority DESC, due_at ASC NULLS LAST, created_at DESC`)
+		WHERE user_id = $1
+		ORDER BY done ASC, priority DESC, due_at ASC NULLS LAST, created_at DESC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list: %w", err)
 	}
@@ -136,9 +150,9 @@ func (s *Store) List(ctx context.Context) ([]models.Todo, error) {
 	return todos, nil
 }
 
-func (s *Store) Get(ctx context.Context, id int64) (models.Todo, error) {
+func (s *Store) Get(ctx context.Context, userID, id int64) (models.Todo, error) {
 	t, err := scanTodo(s.pool.QueryRow(ctx, `
-		SELECT `+todoColumns+` FROM todos WHERE id = $1`, id))
+		SELECT `+todoColumns+` FROM todos WHERE id = $1 AND user_id = $2`, id, userID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return t, ErrNotFound
 	}
@@ -151,25 +165,25 @@ func (s *Store) Get(ctx context.Context, id int64) (models.Todo, error) {
 	return t, nil
 }
 
-func (s *Store) Create(ctx context.Context, in models.TodoInput) (models.Todo, error) {
+func (s *Store) Create(ctx context.Context, userID int64, in models.TodoInput) (models.Todo, error) {
 	t, err := scanTodo(s.pool.QueryRow(ctx, `
-		INSERT INTO todos (title, description, priority, due_at)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO todos (user_id, title, description, priority, due_at)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING `+todoColumns,
-		in.Title, in.Description, in.Priority, in.DueAt))
+		userID, in.Title, in.Description, in.Priority, in.DueAt))
 	if err != nil {
 		return t, fmt.Errorf("create: %w", err)
 	}
 	return t, nil
 }
 
-func (s *Store) Update(ctx context.Context, id int64, in models.TodoInput) (models.Todo, error) {
+func (s *Store) Update(ctx context.Context, userID, id int64, in models.TodoInput) (models.Todo, error) {
 	t, err := scanTodo(s.pool.QueryRow(ctx, `
 		UPDATE todos
 		SET title = $1, description = $2, priority = $3, due_at = $4, updated_at = NOW()
-		WHERE id = $5
+		WHERE id = $5 AND user_id = $6
 		RETURNING `+todoColumns,
-		in.Title, in.Description, in.Priority, in.DueAt, id))
+		in.Title, in.Description, in.Priority, in.DueAt, id, userID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return t, ErrNotFound
 	}
@@ -182,9 +196,9 @@ func (s *Store) Update(ctx context.Context, id int64, in models.TodoInput) (mode
 	return t, nil
 }
 
-func (s *Store) SetDone(ctx context.Context, id int64, done bool) error {
+func (s *Store) SetDone(ctx context.Context, userID, id int64, done bool) error {
 	tag, err := s.pool.Exec(ctx, `
-		UPDATE todos SET done = $2, updated_at = NOW() WHERE id = $1`, id, done)
+		UPDATE todos SET done = $3, updated_at = NOW() WHERE id = $1 AND user_id = $2`, id, userID, done)
 	if err != nil {
 		return fmt.Errorf("set done: %w", err)
 	}
@@ -194,8 +208,8 @@ func (s *Store) SetDone(ctx context.Context, id int64, done bool) error {
 	return nil
 }
 
-func (s *Store) Delete(ctx context.Context, id int64) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM todos WHERE id = $1`, id)
+func (s *Store) Delete(ctx context.Context, userID, id int64) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM todos WHERE id = $1 AND user_id = $2`, id, userID)
 	if err != nil {
 		return fmt.Errorf("delete: %w", err)
 	}
@@ -205,27 +219,30 @@ func (s *Store) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Store) ClearDone(ctx context.Context) (int64, error) {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM todos WHERE done = TRUE`)
+func (s *Store) ClearDone(ctx context.Context, userID int64) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM todos WHERE done = TRUE AND user_id = $1`, userID)
 	if err != nil {
 		return 0, fmt.Errorf("clear done: %w", err)
 	}
 	return tag.RowsAffected(), nil
 }
 
-func (s *Store) AddSubtask(ctx context.Context, todoID int64, title string) (models.Subtask, error) {
+func (s *Store) AddSubtask(ctx context.Context, userID, todoID int64, title string) (models.Subtask, error) {
 	var (
 		st    models.Subtask
 		owner int64
 	)
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO subtasks (todo_id, title)
-		VALUES ($1, $2)
-		RETURNING id, todo_id, title, done`, todoID, title).
+		SELECT id, $2 FROM todos WHERE id = $1 AND user_id = $3
+		RETURNING id, todo_id, title, done`, todoID, title, userID).
 		Scan(&st.ID, &owner, &st.Title, &st.Done)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23503" { // FK violation
+			return st, ErrNotFound
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
 			return st, ErrNotFound
 		}
 		return st, fmt.Errorf("add subtask: %w", err)
@@ -233,10 +250,12 @@ func (s *Store) AddSubtask(ctx context.Context, todoID int64, title string) (mod
 	return st, nil
 }
 
-func (s *Store) SetSubtaskDone(ctx context.Context, todoID, subtaskID int64, done bool) error {
+func (s *Store) SetSubtaskDone(ctx context.Context, userID, todoID, subtaskID int64, done bool) error {
 	tag, err := s.pool.Exec(ctx, `
-		UPDATE subtasks SET done = $3
-		WHERE id = $2 AND todo_id = $1`, todoID, subtaskID, done)
+		UPDATE subtasks SET done = $4
+		WHERE id = $2 AND todo_id = $1
+		AND todo_id IN (SELECT id FROM todos WHERE id = $1 AND user_id = $3)`,
+		todoID, subtaskID, userID, done)
 	if err != nil {
 		return fmt.Errorf("set subtask done: %w", err)
 	}
@@ -246,9 +265,12 @@ func (s *Store) SetSubtaskDone(ctx context.Context, todoID, subtaskID int64, don
 	return nil
 }
 
-func (s *Store) DeleteSubtask(ctx context.Context, todoID, subtaskID int64) error {
+func (s *Store) DeleteSubtask(ctx context.Context, userID, todoID, subtaskID int64) error {
 	tag, err := s.pool.Exec(ctx, `
-		DELETE FROM subtasks WHERE id = $2 AND todo_id = $1`, todoID, subtaskID)
+		DELETE FROM subtasks
+		WHERE id = $2 AND todo_id = $1
+		AND todo_id IN (SELECT id FROM todos WHERE id = $1 AND user_id = $3)`,
+		todoID, subtaskID, userID)
 	if err != nil {
 		return fmt.Errorf("delete subtask: %w", err)
 	}

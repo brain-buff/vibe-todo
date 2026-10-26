@@ -206,6 +206,23 @@ input:focus, textarea:focus, select:focus {
 
 .empty { text-align: center; margin-top: 34px; font-size: 14.5px; color: var(--faint); }
 
+/* модалка входа / регистрации */
+.modal {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  background: rgba(76, 79, 105, .35);
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+.modal[hidden] { display: none; }
+.modal-card {
+  width: 100%; max-width: 360px;
+  display: grid; gap: 14px;
+}
+.modal-card h2 { font-size: 20px; font-weight: 800; }
+.modal-card .field { display: grid; gap: 6px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
 @media (max-width: 560px) {
   body { padding-top: 32px; }
   .form-row { grid-template-columns: 1fr; align-items: stretch; }

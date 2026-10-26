@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"ringbuffer/internal/middleware"
 	"ringbuffer/internal/models"
 	"ringbuffer/internal/store"
 )
@@ -32,7 +33,7 @@ func (h *Todo) Register(api fiber.Router) {
 }
 
 func (h *Todo) List(c *fiber.Ctx) error {
-	todos, err := h.store.List(c.Context())
+	todos, err := h.store.List(c.UserContext(), middleware.UserID(c.UserContext()))
 	if err != nil {
 		return fail(c, err)
 	}
@@ -44,7 +45,7 @@ func (h *Todo) Create(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	t, err := h.store.Create(c.Context(), in)
+	t, err := h.store.Create(c.UserContext(), middleware.UserID(c.UserContext()), in)
 	if err != nil {
 		return fail(c, err)
 	}
@@ -60,7 +61,7 @@ func (h *Todo) Update(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	t, err := h.store.Update(c.Context(), id, in)
+	t, err := h.store.Update(c.UserContext(), middleware.UserID(c.UserContext()), id, in)
 	if err != nil {
 		return fail(c, err)
 	}
@@ -78,14 +79,14 @@ func (h *Todo) SetDone(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil || body.Done == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "поле done обязательно")
 	}
-	if err := h.store.SetDone(c.Context(), id, *body.Done); err != nil {
+	if err := h.store.SetDone(c.UserContext(), middleware.UserID(c.UserContext()), id, *body.Done); err != nil {
 		return fail(c, err)
 	}
 	return c.JSON(fiber.Map{"ok": true})
 }
 
 func (h *Todo) ClearDone(c *fiber.Ctx) error {
-	n, err := h.store.ClearDone(c.Context())
+	n, err := h.store.ClearDone(c.UserContext(), middleware.UserID(c.UserContext()))
 	if err != nil {
 		return fail(c, err)
 	}
@@ -97,7 +98,7 @@ func (h *Todo) Delete(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := h.store.Delete(c.Context(), id); err != nil {
+	if err := h.store.Delete(c.UserContext(), middleware.UserID(c.UserContext()), id); err != nil {
 		return fail(c, err)
 	}
 	return c.JSON(fiber.Map{"ok": true})
@@ -116,7 +117,7 @@ func (h *Todo) AddSubtask(c *fiber.Ctx) error {
 	if body.Title == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "текст подзадачи обязателен")
 	}
-	st, err := h.store.AddSubtask(c.Context(), id, body.Title)
+	st, err := h.store.AddSubtask(c.UserContext(), middleware.UserID(c.UserContext()), id, body.Title)
 	if err != nil {
 		return fail(c, err)
 	}
@@ -138,7 +139,7 @@ func (h *Todo) SetSubtaskDone(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil || body.Done == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "поле done обязательно")
 	}
-	if err := h.store.SetSubtaskDone(c.Context(), id, sid, *body.Done); err != nil {
+	if err := h.store.SetSubtaskDone(c.UserContext(), middleware.UserID(c.UserContext()), id, sid, *body.Done); err != nil {
 		return fail(c, err)
 	}
 	return c.JSON(fiber.Map{"ok": true})
@@ -153,7 +154,7 @@ func (h *Todo) DeleteSubtask(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := h.store.DeleteSubtask(c.Context(), id, sid); err != nil {
+	if err := h.store.DeleteSubtask(c.UserContext(), middleware.UserID(c.UserContext()), id, sid); err != nil {
 		return fail(c, err)
 	}
 	return c.JSON(fiber.Map{"ok": true})

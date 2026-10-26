@@ -12,8 +12,23 @@ const clearDoneBtn = $('#clearDone');
 const submitBtn = $('#submitBtn');
 const cancelEditBtn = $('#cancelEdit');
 
+// auth elements
+const authModal = $('#authModal');
+const authForm = $('#authForm');
+const authTitle = $('#authTitle');
+const authSubmit = $('#authSubmit');
+const authCancel = $('#authCancel');
+const loginBtn = $('#loginBtn');
+const registerBtn = $('#registerBtn');
+const logoutBtn = $('#logoutBtn');
+const userEmail = $('#userEmail');
+
 let todos = [];
 let editingId = null;
+let authMode = 'login'; // 'login' | 'register'
+
+const TOKEN_KEY = 'todos_token';
+const USER_KEY = 'todos_user';
 
 const PRIORITY = {
   1: { label: 'низкий', cls: 'p1' },
@@ -21,13 +36,111 @@ const PRIORITY = {
   3: { label: 'высокий', cls: 'p3' },
 };
 
+/* ---------- auth ---------- */
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function setAuth(token, user) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+function clearAuth() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+function isAuthed() {
+  return Boolean(getToken());
+}
+
+function openAuthModal(mode) {
+  authMode = mode;
+  authTitle.textContent = mode === 'login' ? 'Вход' : 'Регистрация';
+  authSubmit.textContent = mode === 'login' ? 'Войти' : 'Зарегистрироваться';
+  authModal.hidden = false;
+  $('#aEmail').focus();
+}
+
+function closeAuthModal() {
+  authModal.hidden = true;
+  authForm.reset();
+}
+
+function renderAuthUI() {
+  const authed = isAuthed();
+  const u = getUser();
+
+  loginBtn.hidden = authed;
+  registerBtn.hidden = authed;
+  logoutBtn.hidden = !authed;
+  userEmail.hidden = !authed;
+  userEmail.textContent = u ? u.email : '';
+
+  form.hidden = !authed;
+  list.hidden = !authed;
+  empty.hidden = !authed;
+  clearDoneBtn.hidden = !authed || todos.filter((t) => t.done).length === 0;
+}
+
+loginBtn.addEventListener('click', () => openAuthModal('login'));
+registerBtn.addEventListener('click', () => openAuthModal('register'));
+authCancel.addEventListener('click', closeAuthModal);
+
+authModal.addEventListener('click', (e) => {
+  if (e.target === authModal) closeAuthModal();
+});
+
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('#aEmail').value.trim();
+  const password = $('#aPassword').value;
+  if (!email || !password) return;
+
+  const url = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+  try {
+    const data = await req(url, {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    setAuth(data.token, data.user);
+    closeAuthModal();
+    renderAuthUI();
+    await refresh();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+logoutBtn.addEventListener('click', () => {
+  clearAuth();
+  todos = [];
+  render();
+  renderAuthUI();
+});
+
 /* ---------- api ---------- */
 
 async function req(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  const headers = { 'Content-Type': 'application/json' };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(url, { headers, ...options });
+  if (res.status === 401 && isAuthed()) {
+    clearAuth();
+    renderAuthUI();
+  }
   if (!res.ok) {
     let msg = `ошибка ${res.status}`;
     try {
@@ -54,7 +167,7 @@ const api = {
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    '&': '\u0026amp;', '<': '\u0026lt;', '>': '\u0026gt;', '"': '\u0026quot;', "'": '\u0026#39;',
   }[ch]));
 }
 
@@ -133,7 +246,7 @@ function todoHTML(t) {
 function render() {
   list.innerHTML = todos.map(todoHTML).join('');
   const doneCount = todos.filter((t) => t.done).length;
-  empty.hidden = todos.length > 0;
+  empty.hidden = todos.length > 0 || !isAuthed();
   empty.textContent = 'пока тихо — добавь первую задачу ✨';
   counter.textContent = todos.length
     ? `${todos.length} ${plural(todos.length, 'задача', 'задачи', 'задач')} · ${doneCount} ${plural(doneCount, 'выполнена', 'выполнены', 'выполнено')}`
@@ -142,6 +255,11 @@ function render() {
 }
 
 async function refresh() {
+  if (!isAuthed()) {
+    todos = [];
+    render();
+    return;
+  }
   todos = await api.list();
   render();
 }
@@ -261,4 +379,5 @@ list.addEventListener('submit', async (e) => {
 /* ---------- init ---------- */
 
 resetForm();
+renderAuthUI();
 refresh().catch((err) => alert(err.message));

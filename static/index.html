@@ -13,12 +13,37 @@
     <header>
       <h1>todos<span class="dot">.</span></h1>
       <div class="head-actions">
+        <span id="userEmail" class="muted" hidden></span>
+        <button id="logoutBtn" class="btn ghost small" hidden>выйти</button>
+        <button id="loginBtn" class="btn ghost small">вход</button>
+        <button id="registerBtn" class="btn primary small">регистрация</button>
         <button id="clearDone" class="btn ghost small" hidden>очистить выполненные</button>
         <span id="counter" class="muted"></span>
       </div>
     </header>
 
-    <form id="todoForm" class="card" autocomplete="off">
+    <!-- Модалка входа / регистрации -->
+    <div id="authModal" class="modal" hidden>
+      <div class="modal-card card">
+        <h2 id="authTitle">Вход</h2>
+        <form id="authForm" autocomplete="on">
+          <label class="field">
+            <span class="label">Email</span>
+            <input id="aEmail" name="email" type="email" placeholder="you@example.com" required>
+          </label>
+          <label class="field">
+            <span class="label">Пароль</span>
+            <input id="aPassword" name="password" type="password" placeholder="••••••" minlength="6" required>
+          </label>
+          <div class="modal-actions">
+            <button type="submit" class="btn primary" id="authSubmit">Войти</button>
+            <button type="button" class="btn ghost" id="authCancel">отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <form id="todoForm" class="card" autocomplete="off" hidden>
       <input id="fTitle" name="title" type="text" placeholder="Что нужно сделать?" maxlength="200" required>
       <div class="form-row">
         <label class="field">
