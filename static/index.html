@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eff1f5">
+  <title>todos</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E☑%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>todos<span class="dot">.</span></h1>
+      <div class="head-actions">
+        <button id="clearDone" class="btn ghost small" hidden>очистить выполненные</button>
+        <span id="counter" class="muted"></span>
+      </div>
+    </header>
+
+    <form id="todoForm" class="card" autocomplete="off">
+      <input id="fTitle" name="title" type="text" placeholder="Что нужно сделать?" maxlength="200" required>
+      <div class="form-row">
+        <label class="field">
+          <span class="label">Срок</span>
+          <input id="fDue" name="due" type="datetime-local">
+        </label>
+        <label class="field">
+          <span class="label">Приоритет</span>
+          <select id="fPriority" name="priority">
+            <option value="1">низкий</option>
+            <option value="2" selected>средний</option>
+            <option value="3">высокий</option>
+          </select>
+        </label>
+        <button id="submitBtn" type="submit" class="btn primary">Добавить</button>
+        <button id="cancelEdit" type="button" class="btn ghost" hidden>отмена</button>
+      </div>
+      <textarea id="fDesc" name="description" rows="2" placeholder="Описание (необязательно)" maxlength="2000"></textarea>
+    </form>
+
+    <ul id="list" class="list"></ul>
+    <div id="empty" class="empty" hidden></div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

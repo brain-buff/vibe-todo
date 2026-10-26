@@ -1,0 +1,214 @@
+/* Catppuccin Latte — белый */
+:root {
+  --bg: #eff1f5;
+  --bg-soft: #e6e9ef;
+  --card: #ffffff;
+  --border: #dce0e8;
+  --text: #4c4f69;
+  --subtext: #6c6f85;
+  --faint: #9ca0b0;
+  --line: #bcc0cc;
+  --blue: #1e66f5;
+  --yellow: #df8e1d;
+  --yellow-deep: #a85f08;
+  --red: #d20f39;
+  --green: #40a02b;
+  --mauve: #8839ef;
+  --peach: #fe640b;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(76, 79, 105, .06), 0 10px 30px rgba(76, 79, 105, .07);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: light; }
+
+body {
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(136, 57, 239, .07), transparent 60%),
+    radial-gradient(900px 400px at 10% 10%, rgba(30, 102, 245, .06), transparent 55%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 56px 20px 120px;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(30, 102, 245, .18); }
+
+.wrap { max-width: 620px; margin: 0 auto; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+}
+h1 { font-size: 30px; font-weight: 800; letter-spacing: -.03em; }
+h1 .dot { color: var(--blue); }
+.head-actions { display: flex; align-items: center; gap: 12px; }
+.muted { color: var(--subtext); font-size: 14px; }
+
+/* карточка-форма */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+input[type="text"], input[type="datetime-local"], select, textarea {
+  font: inherit; font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none; width: 100%;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+textarea { resize: vertical; min-height: 46px; }
+select { cursor: pointer; }
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--blue);
+  background: var(--card);
+  box-shadow: 0 0 0 3px rgba(30, 102, 245, .12);
+}
+
+.form-row { display: grid; grid-template-columns: 1.2fr 1fr auto auto; gap: 10px; align-items: end; }
+.field { display: grid; gap: 6px; }
+.label {
+  font-size: 11px; font-weight: 700; color: var(--subtext);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+
+/* кнопки */
+.btn {
+  font: inherit; font-size: 14px; font-weight: 600;
+  border: 1px solid transparent; border-radius: 10px;
+  padding: 10px 18px; cursor: pointer; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--blue); color: #fff; }
+.btn.primary:hover { background: #1858da; }
+.btn.ghost { background: transparent; border-color: var(--border); color: var(--subtext); }
+.btn.ghost:hover { background: var(--bg); color: var(--text); }
+.btn.small { padding: 7px 12px; font-size: 13px; border-radius: 9px; }
+
+/* список задач */
+.list { list-style: none; display: grid; gap: 12px; margin-top: 22px; }
+
+.todo {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  animation: pop .18s ease;
+}
+.todo.p1 { border-left: 3px solid var(--blue); }
+.todo.p2 { border-left: 3px solid var(--yellow); }
+.todo.p3 { border-left: 3px solid var(--red); }
+.todo.done { opacity: .7; }
+
+@keyframes pop {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
+.todo-main { display: flex; gap: 13px; }
+.todo-body { flex: 1; min-width: 0; }
+
+.todo-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.title { font-weight: 700; font-size: 15px; word-break: break-word; }
+.todo.done .title { color: var(--faint); text-decoration: line-through; }
+
+.desc {
+  margin-top: 5px; font-size: 14px; line-height: 1.45;
+  color: var(--subtext); white-space: pre-wrap; word-break: break-word;
+}
+
+.badge {
+  font-size: 11px; font-weight: 700; padding: 3px 10px;
+  border-radius: 999px; white-space: nowrap;
+}
+.badge.p1 { background: rgba(30, 102, 245, .10); color: var(--blue); }
+.badge.p2 { background: rgba(223, 142, 29, .15); color: var(--yellow-deep); }
+.badge.p3 { background: rgba(210, 15, 57, .10); color: var(--red); }
+
+.todo-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 9px; min-height: 24px;
+}
+
+.due { font-size: 12.5px; color: var(--subtext); display: inline-flex; align-items: center; gap: 7px; }
+.due::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.due.today { color: var(--peach); font-weight: 600; }
+.due.today::before { background: var(--peach); }
+.due.soon { color: var(--yellow-deep); font-weight: 600; }
+.due.soon::before { background: var(--yellow); }
+.due.overdue { color: var(--red); font-weight: 700; }
+.due.overdue::before { background: var(--red); }
+
+.actions { display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+.todo:hover .actions, .actions:focus-within { opacity: 1; }
+
+.icon-btn {
+  width: 28px; height: 28px; border: none; background: transparent;
+  color: var(--faint); border-radius: 8px; cursor: pointer;
+  font-size: 13px; display: grid; place-items: center;
+  transition: background .15s, color .15s;
+}
+.icon-btn:hover { background: var(--bg-soft); color: var(--text); }
+.icon-btn.danger:hover { background: rgba(210, 15, 57, .10); color: var(--red); }
+
+/* чекбокс-кружок */
+.check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--line);
+  background: transparent; color: transparent;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0; margin-top: 2px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.check:hover { border-color: var(--green); color: var(--green); }
+.todo.done .check { background: var(--green); border-color: var(--green); color: #fff; }
+
+/* подзадачи */
+.subtasks {
+  margin-top: 12px; padding: 10px 0 0 35px;
+  border-top: 1px dashed var(--border);
+  display: grid; gap: 8px;
+}
+.sub-list { list-style: none; display: grid; gap: 5px; }
+.subtask { display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
+.subtask span { flex: 1; word-break: break-word; }
+.subtask.done span { color: var(--faint); text-decoration: line-through; }
+
+.check-small { width: 16px; height: 16px; border-width: 1.5px; font-size: 9px; margin-top: 0; }
+.subtask.done .check-small { background: var(--mauve); border-color: var(--mauve); color: #fff; }
+
+.sub-del { opacity: 0; font-size: 11px; }
+.subtask:hover .sub-del { opacity: 1; }
+
+.sub-form { display: flex; gap: 6px; }
+.sub-form input { font-size: 13px; padding: 7px 10px; border-radius: 8px; }
+.sub-form .btn {
+  padding: 7px 13px; border-radius: 8px; font-size: 15px;
+  background: var(--bg-soft); border-color: var(--border); color: var(--text);
+}
+.sub-form .btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.empty { text-align: center; margin-top: 34px; font-size: 14.5px; color: var(--faint); }
+
+@media (max-width: 560px) {
+  body { padding-top: 32px; }
+  .form-row { grid-template-columns: 1fr; align-items: stretch; }
+  .actions { opacity: 1; }
+  .subtasks { padding-left: 0; }
+}
